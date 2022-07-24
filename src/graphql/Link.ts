@@ -7,6 +7,14 @@ export const Link = objectType({
     t.nonNull.int("id");
     t.nonNull.string("description");
     t.nonNull.string("url");
+    t.field("postedBy", {   
+      type: "User",
+      resolve(parent, args, context) {  
+          return context.prisma.link
+              .findUnique({ where: { id: parent.id } })
+              .postedBy();
+      },
+    });
   }
 });
 
@@ -33,10 +41,18 @@ export const LinkMutation = extendType({
         url: nonNull(stringArg()),
       },
       resolve(parent, args, ctx) {
+        const { description, url } = args;
+        const { userId } = ctx;
+
+        if (!userId) {
+          throw new Error("You must be logged in to post a link");
+        }
+
         const newLink = ctx.prisma.link.create({
           data: {
-            description: args.description,
-            url: args.url,
+            description,
+            url,
+            postedBy: { connect: { id: userId } },
           },
         });
         return newLink;
